@@ -42,8 +42,10 @@ import com.google.android.gms.wearable.PutDataRequest;
 import com.google.android.gms.wearable.Wearable;
 
 import java.time.Instant;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.concurrent.ExecutionException;
 
@@ -76,7 +78,27 @@ public class SyncWorker extends Worker {
             LibreLinkUp.ConnectionsResult result = libreLinkUp.connections();
             libreLinkUp.setAuthTicket(result.ticket);
             LibreLinkUp.GlucoseMeasurement gm = result.data.get(0).glucoseMeasurement;
-            ZonedDateTime time = ZonedDateTime.parse(gm.FactoryTimestamp + " +0000", DateTimeFormatter.ofPattern("M/d/y h:m:s a Z"));
+
+            ZonedDateTime time;
+            if (gm.FactoryTimestamp != null) {
+                try {
+                    // Attempt to parse as a datetime string
+                    time = ZonedDateTime.parse((String) gm.FactoryTimestamp + " +0000", DateTimeFormatter.ofPattern("M/d/y h:m:s a Z"));
+                } catch (DateTimeParseException e) {
+                    // If parsing fails, assume it's a long timestamp
+                    try {
+                        long timestampMillis = Long.parseLong(gm.FactoryTimestamp);
+                        time = ZonedDateTime.ofInstant(Instant.ofEpochMilli(timestampMillis), ZoneId.systemDefault());
+                    } catch (NumberFormatException nfe) {
+                        // Handle the case where it's neither a valid datetime string nor a long timestamp
+                        time = ZonedDateTime.now(); // Fallback to current time
+                    }
+                }
+            } else {
+                // Handle null FactoryTimestamp
+                time = ZonedDateTime.now(); // Fallback to current time
+            }
+
             BloodGlucoseRecord r = new BloodGlucoseRecord(
                     Instant.from(time),
                     time.getOffset(),
