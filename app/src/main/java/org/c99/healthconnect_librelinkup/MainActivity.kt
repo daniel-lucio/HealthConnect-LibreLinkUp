@@ -133,12 +133,12 @@ class MainActivity : ComponentActivity() {
             )
         }
 
-        val user = getSharedPreferences("user", MODE_PRIVATE)
-        if (user != null && user.contains("email")) {
-            viewModel.setEmail(user.getString("email", "").toString())
+        val user = libreLinkUp.user
+        if (user != null && user.email != null) {
+            viewModel.setEmail(user.email)
             viewModel.setStatus("Logged in as " +
-                    user.getString("firstName", "") + " " +
-                    user.getString("lastName", "")
+                    user.firstName + " " +
+                    user.lastName
             )
         }
 
@@ -227,17 +227,9 @@ class MainActivity : ComponentActivity() {
                     libreLinkUp.login(viewModel.uiState.value.email, viewModel.uiState.value.password)
                 if (loginResult != null && loginResult.status == 0) {
                     libreLinkUp.authTicket = loginResult.data.authTicket
+                    libreLinkUp.user = loginResult.data.user
                     CoroutineScope(Dispatchers.Main).launch {
                         libreLinkUp.schedule()
-                    }
-                    try {
-                        val user = getSharedPreferences("user", MODE_PRIVATE).edit()
-                        user.putString("firstName", loginResult.data.user.firstName)
-                        user.putString("lastName", loginResult.data.user.lastName)
-                        user.putString("email", loginResult.data.user.email)
-                        user.apply()
-                    } catch (e: Exception) {
-                        e.printStackTrace()
                     }
                     viewModel.setStatus("Logged in as " + loginResult.data.user.firstName + " " + loginResult.data.user.lastName)
                 } else {

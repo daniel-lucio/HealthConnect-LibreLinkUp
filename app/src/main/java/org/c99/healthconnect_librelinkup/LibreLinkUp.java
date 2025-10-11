@@ -33,7 +33,10 @@ import com.squareup.moshi.Moshi;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -46,13 +49,14 @@ import okhttp3.Response;
 
 public class LibreLinkUp {
     private AuthTicket authTicket;
+    private User user;
     private Context context;
 
     private final OkHttpClient client = new OkHttpClient();
     private final Moshi moshi = new Moshi.Builder().build();
 
     private final String LIBRELINKUP_URL = "https://api-us.libreview.io";
-    private final String LIBRELINKUP_VERSION = "4.7.0";
+    private final String LIBRELINKUP_VERSION = "4.16.0";
     private final String LIBRELINKUP_PRODUCT = "llu.ios";
     private final Headers LIBRELINKUP_HEADERS = new Headers.Builder()
             .add("Content-Type", "application/json")
@@ -97,8 +101,15 @@ public class LibreLinkUp {
             authTicket.token = cache.getString("auth_token", null);
             authTicket.duration = cache.getLong("auth_duration", 0);
             authTicket.expires = cache.getLong("auth_expires", 0);
+
+            user = new User();
+            user.id = cache.getString("user_id", null);
+            user.email = cache.getString("user_email", null);
+            user.firstName = cache.getString("user_first_name", null);
+            user.lastName = cache.getString("user_last_name", null);
         } catch (Exception e) {
             authTicket = null;
+            user = null;
             e.printStackTrace();
         }
     }
@@ -123,6 +134,48 @@ public class LibreLinkUp {
             authTicket = ticket;
         } catch (Exception e) {
             authTicket = null;
+        }
+    }
+
+    public void setUser(User user) {
+        try {
+            SharedPreferences.Editor cache = getEncryptedSharedPreferences().edit();
+            if(user != null) {
+                cache.putString("user_id", user.id);
+                cache.putString("user_email", user.email);
+                cache.putString("user_first_name", user.firstName);
+                cache.putString("user_last_name", user.lastName);
+            } else {
+                cache.remove("user_id");
+                cache.remove("user_email");
+                cache.remove("user_first_name");
+                cache.remove("user_last_name");
+            }
+            cache.commit();
+            this.user = user;
+        } catch (Exception e) {
+            this.user = null;
+        }
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public String AccountID() {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+
+            byte[] hashedBytes = digest.digest(user.id.getBytes(StandardCharsets.UTF_8));
+
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hashedBytes) {
+                hexString.append(String.format("%02x", b));
+            }
+            return hexString.toString();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -155,6 +208,7 @@ public class LibreLinkUp {
         JsonAdapter<ConnectionsResult> connectionsResultJsonAdapter = moshi.adapter(ConnectionsResult.class);
         Headers headers = new Headers.Builder().addAll(LIBRELINKUP_HEADERS)
                 .add("Authorization", "Bearer " + authTicket.token)
+                .add("Account-Id", AccountID())
                 .build();
 
         Request request = new Request.Builder()
