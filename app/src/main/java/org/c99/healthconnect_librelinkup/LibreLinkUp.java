@@ -55,7 +55,7 @@ public class LibreLinkUp {
     private final OkHttpClient client = new OkHttpClient();
     private final Moshi moshi = new Moshi.Builder().build();
 
-    private final String LIBRELINKUP_URL = "https://api-us.libreview.io";
+    private final String LIBRELINKUP_URL = "https://api-ca.libreview.io";
     private final String LIBRELINKUP_VERSION = "4.16.0";
     private final String LIBRELINKUP_PRODUCT = "llu.ios";
     private final Headers LIBRELINKUP_HEADERS = new Headers.Builder()
